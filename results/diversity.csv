@@ -1,0 +1,16 @@
+,stative,inchoative,causative
+avere,NA,0.0,1.0795883408865783
+provare,NA,0.0,1.0795883408865783
+sentire,NA,0.0,1.079875331190407
+essere_in,NA,0.0,NA
+conversion_stative,NA,NA,NA
+conversion+si_stative,NA,NA,0.0
+andare_in,0.0,NA,NA
+prendere,0.6869615765973234,NA,0.0
+conversion+si_inchoative,0.9222208985694431,NA,0.9950269901795208
+parasynthesis+si_inchoative,0.9979582015252451,NA,1.0670895187820837
+dare,1.0439522154956378,0.0,NA
+fare,1.0815382409131464,0.6730116670092565,NA
+mettere,1.0628695512426272,NA,NA
+conversion_causative,0.0,0.0,NA
+parasynthesis,0.9519619815813116,0.0,NA

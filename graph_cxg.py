@@ -1,0 +1,390 @@
+import pandas as pd
+import csv
+from itertools import combinations
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib
+from matplotlib import rc
+import math
+import sys
+import pathlib
+import os
+if sys.platform == 'win32':
+    path = pathlib.Path(r'C:\Program Files\Graphviz\bin')
+    if path.is_dir() and str(path) not in os.environ['PATH']:
+        os.environ['PATH'] += f';{path}'
+from networkx.drawing.nx_agraph import graphviz_layout
+import pygraphviz
+import igraph as ig
+from operator import itemgetter
+
+#list of cxns
+nodi = ['avere','provare','sentire','essere_in','conversion_stative','conversion+si_stative','parasynthesis+si_stative','suffixation_stative','andare_in','farsi','prendere','conversion+si_inchoative','parasynthesis+si_inchoative','dare','fare','mettere','conversion_causative','parasynthesis','suffixation_causative']
+nodi_lab = [r'$\it{avere}$ N',r'$\it{provare}$ N',r'$\it{sentire}$ N',r'$\it{essere}$ $\it{in}$ N',r'N$\it{-a/ire}$',r'N$\it{-a/irsi}$',r'$\it{in/ad-}$N$\it{-a/irsi}$',r'N$\it{-izzare}$',r'$\it{andare}$ $\it{in}$ N',r'$\it{farsi}$ N',r'$\it{prendere}$ N',r'N$\it{-a/irsi}$',r'$\it{in/ad-}$N$\it{-a/irsi}$',r'$\it{dare}$ N','$\it{fare}$ N','$\it{mettere}$ N','N$\it{-a/ire}$','$\it{in/ad-}$N$\it{-a/ire}$','N$\it{-izzare}$']
+
+events = { 'statives' : ['avere','provare','sentire','essere_in','conversion_stative','conversion+si_stative','parasynthesis+si_stative','suffixation_stative'],
+'inchoatives' : ['andare_in','farsi','prendere','conversion+si_inchoative','parasynthesis+si_inchoative'],
+'causatives' : ['dare','fare','mettere','conversion_causative','parasynthesis','suffixation_causative']}
+
+cxn_type = { 'LVC' : ['avere','provare','sentire','essere_in', 'andare_in','farsi','prendere', 'dare','fare','mettere'],
+'SV' : ['conversion_stative','conversion+si_stative','parasynthesis+si_stative','suffixation_stative', 'conversion+si_inchoative','parasynthesis+si_inchoative', 'conversion_causative','parasynthesis','suffixation_causative']
+}
+
+cxn_type2 = { 'LVC' : ['avere','provare','sentire','essere_in', 'andare_in','farsi','prendere', 'dare','fare','mettere'],
+'SV_si' : ['conversion+si_stative','parasynthesis+si_stative', 'conversion+si_inchoative','parasynthesis+si_inchoative'],
+'SV' : ['conversion_stative', 'suffixation_stative', 'conversion_causative','parasynthesis','suffixation_causative']}
+
+mother_nodes = ['V_N', 'V_PP', 'N-izzare', 'V_si', 'N-are/ire', 'pref-N']
+mother_labs = ['[V N]', '[V Prep N]', r'$\{[_V}$ N$\it{-izzare}$]', r'$\{[_V}$ V$\it{-si}$]', r'$\{[_V}$ N$\it{-a/ire}$]', 'pref-N']
+vert = [('V_N', 'avere', 1), ('V_N', 'provare', 1), ('V_N', 'fare', 1), ('V_N', 'dare', 1), ('V_N', 'mettere', 1), ('V_N', 'sentire', 1),
+        ('V_N', 'prendere', 1), ('V_N', 'farsi', 1), ('V_PP', 'essere_in', 1), ('V_PP', 'andare_in', 1), ('N-izzare', 'suffixation_stative', 1),
+        ('N-izzare', 'suffixation_causative', 1), ('V_si', 'parasynthesis+si_stative', 1), ('V_si', 'conversion+si_stative', 1),
+        ('V_si', 'conversion+si_inchoative', 1), ('V_si', 'parasynthesis+si_inchoative', 1), ('N-are/ire', 'conversion_stative', 1),
+        ('N-are/ire', 'conversion_causative', 1), ('pref-N', 'parasynthesis', 1), ('N-are/ire', 'parasynthesis', 1)]
+'''vert = [('V_N', 'avere', 1), ('V_N', 'provare', 1), ('V_N', 'fare', 1), ('V_N', 'dare', 1), ('V_N', 'mettere', 1), ('V_N', 'sentire', 1),
+        ('V_N', 'prendere', 1),  ('V_PP', 'essere_in', 1), ('V_PP', 'andare_in', 1), ('N-izzare', 'suffixation_stative', 1),
+        ('N-izzare', 'suffixation_causative', 1),  ('V_si', 'conversion+si_stative', 1),
+        ('V_si', 'conversion+si_inchoative', 1), ('V_si', 'parasynthesis+si_inchoative', 1), ('N-are/ire', 'conversion_stative', 1),
+        ('N-are/ire', 'conversion_causative', 1) ]'''
+
+    
+#frequency measures of cxn
+df0 = df2 = pd.read_csv('Graph_CxnFrequencies.csv', sep = ";", encoding ="utf-8")
+n_types = df0['n_types'].tolist()
+n_tokens = df0['n_tokens'].tolist()
+max_tokens = df0['max_n_tokens'].tolist()
+avg_tokens = df0['avg_n_tokens'].tolist()
+median_tokens = df0['median_n_tokens'].tolist()
+freq_pmw = df0['freq_pmw'].tolist()
+
+#################################################################################################
+
+#choose frequency measure for node sizes
+freq_measure = n_types
+
+sizes = []
+for i in freq_measure:
+    sizes.append(abs(300*(math.log(i))))
+cxn_lab = dict()
+for i in range(len(nodi)):
+    cxn_lab[nodi[i]] = nodi_lab[i]
+
+
+#choose number of pairs threshold
+threshold = 4
+
+#choose color of synonymy and paradigmatic links
+syn_link_col = 'purple'
+par_link_col = 'black'
+vert_link_col = "grey"
+
+#choose style of synonymy and paradigmatic links
+syn_link_st = '-'
+par_link_st = '-'
+
+#choose size links
+large_par = 1.5
+large_syn = 1.5
+medium_par = 1
+medium_syn = 1
+small_par = 0.5
+small_syn = 0.5
+
+#choose node color of event types
+stat_col = 'cyan'
+inc_col = 'yellow'
+caus_col = 'red'
+
+stat = [stat_col,]*8
+inc = [inc_col,]*5
+caus = [caus_col,]*6
+colori = stat+inc+caus
+
+#choose shape of cxn nodes
+shape_cxn = "o"
+shape_mother = "s"
+
+
+####################################################################################################
+
+#read data
+df = pd.read_csv("Graph_Synonymy.csv", sep = ";", encoding = "utf-8")
+df2 = pd.read_csv('Graph_Paradigmatic.csv', sep = ";", encoding ="utf-8")
+syn_pred1 = df['pred1'].tolist()
+syn_pred2 = df['pred2'].tolist()
+syn_n = df['n'].tolist()
+par_pred1 = df2['pred1'].tolist()
+par_pred2 = df2['pred2'].tolist()
+par_n = df2['n'].tolist()
+
+#synonymy links graph
+syn = []
+for i in range(len(syn_pred1)):
+    if syn_n[i] >= threshold:
+        syn.append((syn_pred1[i], syn_pred2[i], syn_n[i]))
+
+G = nx.Graph()
+G.add_nodes_from(nodi)
+G.add_weighted_edges_from(syn)
+
+
+#paradigmatic links graph
+par = []
+for i in range(len(par_pred1)):
+    if par_n[i] >= threshold:
+        par.append((par_pred1[i], par_pred2[i], par_n[i]))
+
+H = nx.Graph()
+H.add_nodes_from(nodi)
+H.add_weighted_edges_from(par)
+ 
+
+#compose the two graphs
+R = nx.compose(G, H)
+R.remove_nodes_from(list(nx.isolates(R)))
+
+nodi_ = ['',]*len(R.nodes())
+nodi_lab_ = ['',]*len(R.nodes())
+sizes_ = ['',]*len(R.nodes())
+colori_ = ['',]*len(R.nodes())
+
+
+nodini = list(R.nodes()) 
+for i in list(R.nodes()):
+    ind = nodi.index(i)
+    ind_2 = nodini.index(i)
+    nodi_[ind_2] = nodi[ind]
+    nodi_lab_[ind_2] = nodi_lab[ind]
+    sizes_[ind_2] = sizes[ind]
+    colori_[ind_2] = colori[ind]
+
+
+
+nodi = nodi_
+nodi_lab = nodi_lab_
+sizes = sizes_
+colori = colori_
+
+cxn_lab = dict()
+for i in range(len(nodi)):
+    cxn_lab[nodi[i]] = nodi_lab[i]
+
+
+#function for plotting the graphs
+def plot(graph, add_vert, nodi, sizes, shape_cxn, colori):
+    #define appearance of link weight and type
+    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] >= 15 ]
+    elarge_syn = []
+    elarge_par = []
+    for (u,v) in elarge:
+        tr = 0
+        for (i, j, z) in syn:
+            if (u,v) == (i,j):
+                tr += 1
+        if tr ==1:
+            elarge_syn.append((u,v))
+        else:
+            elarge_par.append((u,v))
+
+    emedium  = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] >= 10 and d['weight'] < 15]
+    emedium_syn = []
+    emedium_par = []
+    for (u,v) in emedium:
+        tr = 0
+        for (i, j, z) in syn:
+            if (u,v) == (i,j):
+                tr += 1
+        if tr ==1:
+            emedium_syn.append((u,v))
+        else:
+            emedium_par.append((u,v))
+    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight']  < 10]
+    esmall_syn = []
+    esmall_par = []
+    for (u,v) in esmall:
+        tr = 0
+        for (i, j, z) in syn:
+            if (u,v) == (i,j):
+                tr += 1
+        if tr ==1:
+            esmall_syn.append((u,v))
+        else:
+            esmall_par.append((u,v))
+
+    if add_vert == True:
+        for i in range(len(mother_nodes)):
+            cxn_lab[mother_nodes[i]] = mother_labs[i]
+            
+        n = len(nodi)
+        m = len(mother_nodes)
+        
+        #add to nodi, nodesize, nodecolor, nodeshape
+        nodi2 = nodi + mother_nodes
+        s_2 = [300,]*m
+        c_2 = ["grey",]*m
+        
+        
+
+        
+
+        
+    #algorithm spring_layout (keeps together frequrntly linked nodes, pulls apart unlinked ones)
+    pos = nx.spring_layout(graph, weight = 'weight')
+
+
+
+    #draw nodes
+    nx.draw_networkx_nodes(graph, pos, nodelist= nodi, node_size = sizes, node_color = colori, node_shape = shape_cxn)
+    if add_vert == True:
+        nx.draw_networkx_nodes(graph, pos, nodelist= mother_nodes, node_size = s_2, node_color = c_2, node_shape = shape_mother)
+    #draw edges
+    nx.draw_networkx_edges(graph, pos, edgelist=elarge_syn, edge_color =syn_link_col, style = syn_link_st, width=large_syn)
+    nx.draw_networkx_edges(graph, pos, edgelist=elarge_par, style = par_link_st, edge_color=par_link_col,  width=large_par)
+    nx.draw_networkx_edges(graph, pos, edgelist=emedium_syn, edge_color = syn_link_col, style = syn_link_st, width=medium_syn)
+    nx.draw_networkx_edges(graph, pos, edgelist=emedium_par, edge_color = par_link_col, style = par_link_st, width=medium_par)
+    nx.draw_networkx_edges(graph, pos, edgelist=esmall_syn, edge_color =syn_link_col, style = syn_link_st, width=small_syn)
+    nx.draw_networkx_edges(graph, pos, edgelist=esmall_par, style = par_link_st, edge_color = par_link_col, width=small_par)
+    if add_vert == True:
+        nx.draw_networkx_edges(graph, pos, edgelist=vert, arrows = True, arrowstyle = '-|>', edge_color = vert_link_col)
+
+    #add labels
+    nx.draw_networkx_labels(graph, pos, labels = cxn_lab, font_size=10, font_color="black")
+
+    stative = mpatches.Patch(color=stat_col, label='statives')
+    inchoative = mpatches.Patch(color=inc_col, label='inchoatives')
+    causative = mpatches.Patch(color=caus_col, label='causatives')
+
+    plt.legend(handles = [stative, inchoative, causative], title = "Event types", loc = "lower right",  title_fontproperties={'weight':'bold'})
+
+    #show plot
+    plt.show()
+ 
+
+
+
+#calculate and saves centrality measures
+def centrality(graph):
+    deg = graph.degree(weight = 'weight')
+    for u,v,d in graph.edges(data=True):
+        if 'weight' in d:
+            if d['weight'] != 0:
+                d['reciprocal'] = 1/d['weight']
+    betw = nx.betweenness_centrality(graph, weight= 'reciprocal', normalized=False)
+    clos = nx.closeness_centrality(graph, distance= 'reciprocal')
+    print(deg)
+    print(betw)
+    print(clos)
+    df = pd.DataFrame(deg, columns = ['pred','degree'])
+    df.to_csv('degree_centrality.csv',encoding='utf-8')
+    df1 = pd.DataFrame.from_dict(betw, orient = 'index', columns = ['betweenness'])
+    df1.to_csv('betweenness_centrality.csv',encoding='utf-8')
+    df2 = pd.DataFrame.from_dict(clos, orient = 'index', columns = ['closeness'])
+    df2.to_csv('closeness_centrality.csv',encoding='utf-8')
+    
+
+
+#find maximal cliques
+def clique(graph):
+    cls = []
+    for i in nx.find_cliques(graph):
+        igr = graph.subgraph(i)
+        somma = 0 
+        if len(i) > 1:
+            for (u,v,d) in nx.to_edgelist(igr):
+                somma += d['weight']
+            cls.append((i,somma))
+    cls =  sorted(cls,key=itemgetter(1))
+    print('Cliques, ordered by weight')
+    for c in cls:
+        print(c)
+
+#find articulation points
+def critical_points(graph):
+    h = ig.Graph.from_networkx(graph)
+    for i in h.vs[h.articulation_points()]:
+        print(i)
+
+#calculates node diversity wrt to neighbors expressing different event types. The original diversity measure in igraph was denormalized
+def diversity(graph, classification):
+    cells = dict()
+    for i in graph:
+        nei = nx.all_neighbors(graph, i)
+        stats = []
+        caus = []
+        inchs = []
+        for j in nei:
+            if j in classification['statives']:
+                if i not in classification['statives']:
+                    stats.append(j)
+            elif j in classification['inchoatives']:
+                if i not in classification['inchoatives']:
+                    inchs.append(j)
+            elif j in classification['causatives']:
+                if i not in classification['causatives']:
+                    caus.append(j)
+
+        if len(stats) > 0:
+            stats.append(i)
+            stg = graph.subgraph(stats)
+            stg = ig.Graph.from_networkx(stg)
+            name = stg.vs.find('_nx_name' == i).index
+            st_dv = stg.diversity(vertices = name, weights = 'weight')
+            dg = math.log(stg.degree(name, "all" ))
+            st_en = st_dv*dg
+        else:
+            st_dv = 'NA'
+            st_en = 'NA'
+
+        if len(inchs) > 0:
+            inchs.append(i)
+            ing = graph.subgraph(inchs)
+
+            ing = ig.Graph.from_networkx(ing)
+            name = ing.vs.find('_nx_name' == i).index
+            in_dv = ing.diversity(vertices = name, weights = 'weight')
+            dg = math.log(ing.degree(name, "all" ))
+            in_en = in_dv*dg 
+        else:
+            in_dv = 'NA'
+            in_en = 'NA'
+
+        if len(caus) > 0:
+            caus.append(i)
+            cng = graph.subgraph(caus)
+            cng = ig.Graph.from_networkx(cng)
+            name = cng.vs.find('_nx_name' == i).index
+            ca_dv = cng.diversity(vertices = name, weights = 'weight')
+            dg = math.log(cng.degree(name, "all"))
+            ca_en = ca_dv*dg
+        else:
+            ca_dv = 'NA'
+            ca_en = 'NA'
+        cells[i] = (st_en, in_en, ca_en)
+        print(i, stats, inchs, caus)
+        print(st_dv, in_dv, ca_dv)
+        print(st_en, in_en, ca_en)
+    df4 = pd.DataFrame.from_dict(cells, orient='index', columns=['stative', 'inchoative', 'causative'])
+    df4.to_csv('diversity.csv',encoding='utf-8')
+
+
+def clustering(graph):
+    print('Properties of the Graph')
+    print('--------------------------')
+    print('number of nodes:', str(graph.number_of_nodes()))
+    print('number of edges:', str(graph.number_of_edges()))
+    print('density:', str(nx.density(graph)))
+    print('average clustering:', str(nx.average_clustering(graph, weight = 'weight')))
+    print('assortativity:', str(nx.degree_assortativity_coefficient(graph, weight = 'weight')))
+    print('transitivity: ', str(nx.transitivity(graph)))
+
+
+print(clustering(R))
+print(clique(R))
+print(critical_points(R))
+centrality(R)
+diversity(R,events)
+
+plot(R, False, nodi, sizes, shape_cxn, colori)
+
