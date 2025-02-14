@@ -38,20 +38,11 @@ cxn_type2 = { 'LVC' : ['avere','provare','sentire','essere_in', 'andare_in','far
 
 mother_nodes = ['V_N', 'V_PP', 'N-izzare', 'V_si', 'N-are/ire', 'pref-N']
 mother_labs = ['[V N]', '[V Prep N]', r'$\{[_V}$ N$\it{-izzare}$]', r'$\{[_V}$ V$\it{-si}$]', r'$\{[_V}$ N$\it{-a/ire}$]', 'pref-N']
-vert = [('V_N', 'avere', 1), ('V_N', 'provare', 1), ('V_N', 'fare', 1), ('V_N', 'dare', 1), ('V_N', 'mettere', 1), ('V_N', 'sentire', 1),
-        ('V_N', 'prendere', 1), ('V_N', 'farsi', 1), ('V_PP', 'essere_in', 1), ('V_PP', 'andare_in', 1), ('N-izzare', 'suffixation_stative', 1),
-        ('N-izzare', 'suffixation_causative', 1), ('V_si', 'parasynthesis+si_stative', 1), ('V_si', 'conversion+si_stative', 1),
-        ('V_si', 'conversion+si_inchoative', 1), ('V_si', 'parasynthesis+si_inchoative', 1), ('N-are/ire', 'conversion_stative', 1),
-        ('N-are/ire', 'conversion_causative', 1), ('pref-N', 'parasynthesis', 1), ('N-are/ire', 'parasynthesis', 1)]
-'''vert = [('V_N', 'avere', 1), ('V_N', 'provare', 1), ('V_N', 'fare', 1), ('V_N', 'dare', 1), ('V_N', 'mettere', 1), ('V_N', 'sentire', 1),
-        ('V_N', 'prendere', 1),  ('V_PP', 'essere_in', 1), ('V_PP', 'andare_in', 1), ('N-izzare', 'suffixation_stative', 1),
-        ('N-izzare', 'suffixation_causative', 1),  ('V_si', 'conversion+si_stative', 1),
-        ('V_si', 'conversion+si_inchoative', 1), ('V_si', 'parasynthesis+si_inchoative', 1), ('N-are/ire', 'conversion_stative', 1),
-        ('N-are/ire', 'conversion_causative', 1) ]'''
+
 
     
 #frequency measures of cxn
-df0 = df2 = pd.read_csv('Graph_CxnFrequencies.csv', sep = ";", encoding ="utf-8")
+df0 = pd.read_csv('Graph_CxnFrequencies.csv', sep = ";", encoding ="utf-8")
 n_types = df0['n_types'].tolist()
 n_tokens = df0['n_tokens'].tolist()
 max_tokens = df0['max_n_tokens'].tolist()
