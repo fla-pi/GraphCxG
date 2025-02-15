@@ -36,12 +36,9 @@ cxn_type2 = { 'LVC' : ['avere','provare','sentire','essere_in', 'andare_in','far
 'SV_si' : ['conversion+si_stative','parasynthesis+si_stative', 'conversion+si_inchoative','parasynthesis+si_inchoative'],
 'SV' : ['conversion_stative', 'suffixation_stative', 'conversion_causative','parasynthesis','suffixation_causative']}
 
-mother_nodes = ['V_N', 'V_PP', 'N-izzare', 'V_si', 'N-are/ire', 'pref-N']
-mother_labs = ['[V N]', '[V Prep N]', r'$\{[_V}$ N$\it{-izzare}$]', r'$\{[_V}$ V$\it{-si}$]', r'$\{[_V}$ N$\it{-a/ire}$]', 'pref-N']
-
 
     
-#frequency measures of cxn
+#frequency measures of cxn (for the size of the nodes)
 df0 = pd.read_csv('Graph_CxnFrequencies.csv', sep = ";", encoding ="utf-8")
 n_types = df0['n_types'].tolist()
 n_tokens = df0['n_tokens'].tolist()
@@ -69,7 +66,7 @@ threshold = 4
 #choose color of synonymy and paradigmatic links
 syn_link_col = 'purple'
 par_link_col = 'black'
-vert_link_col = "grey"
+
 
 #choose style of synonymy and paradigmatic links
 syn_link_st = '-'
@@ -95,7 +92,7 @@ colori = stat+inc+caus
 
 #choose shape of cxn nodes
 shape_cxn = "o"
-shape_mother = "s"
+
 
 
 ####################################################################################################
@@ -164,7 +161,7 @@ for i in range(len(nodi)):
 
 
 #function for plotting the graphs
-def plot(graph, add_vert, nodi, sizes, shape_cxn, colori):
+def plot(graph, nodi, sizes, shape_cxn, colori):
     #define appearance of link weight and type
     elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] >= 15 ]
     elarge_syn = []
@@ -204,17 +201,6 @@ def plot(graph, add_vert, nodi, sizes, shape_cxn, colori):
         else:
             esmall_par.append((u,v))
 
-    if add_vert == True:
-        for i in range(len(mother_nodes)):
-            cxn_lab[mother_nodes[i]] = mother_labs[i]
-            
-        n = len(nodi)
-        m = len(mother_nodes)
-        
-        #add to nodi, nodesize, nodecolor, nodeshape
-        nodi2 = nodi + mother_nodes
-        s_2 = [300,]*m
-        c_2 = ["grey",]*m
         
         
 
@@ -237,8 +223,7 @@ def plot(graph, add_vert, nodi, sizes, shape_cxn, colori):
     nx.draw_networkx_edges(graph, pos, edgelist=emedium_par, edge_color = par_link_col, style = par_link_st, width=medium_par)
     nx.draw_networkx_edges(graph, pos, edgelist=esmall_syn, edge_color =syn_link_col, style = syn_link_st, width=small_syn)
     nx.draw_networkx_edges(graph, pos, edgelist=esmall_par, style = par_link_st, edge_color = par_link_col, width=small_par)
-    if add_vert == True:
-        nx.draw_networkx_edges(graph, pos, edgelist=vert, arrows = True, arrowstyle = '-|>', edge_color = vert_link_col)
+    
 
     #add labels
     nx.draw_networkx_labels(graph, pos, labels = cxn_lab, font_size=10, font_color="black")
@@ -323,7 +308,7 @@ def diversity(graph, classification):
             name = stg.vs.find('_nx_name' == i).index
             st_dv = stg.diversity(vertices = name, weights = 'weight')
             dg = math.log(stg.degree(name, "all" ))
-            st_en = st_dv*dg
+            st_en = st_dv
         else:
             st_dv = 'NA'
             st_en = 'NA'
@@ -336,7 +321,7 @@ def diversity(graph, classification):
             name = ing.vs.find('_nx_name' == i).index
             in_dv = ing.diversity(vertices = name, weights = 'weight')
             dg = math.log(ing.degree(name, "all" ))
-            in_en = in_dv*dg 
+            in_en = in_dv 
         else:
             in_dv = 'NA'
             in_en = 'NA'
@@ -348,7 +333,7 @@ def diversity(graph, classification):
             name = cng.vs.find('_nx_name' == i).index
             ca_dv = cng.diversity(vertices = name, weights = 'weight')
             dg = math.log(cng.degree(name, "all"))
-            ca_en = ca_dv*dg
+            ca_en = ca_dv
         else:
             ca_dv = 'NA'
             ca_en = 'NA'
@@ -372,10 +357,35 @@ def clustering(graph):
 
 
 print(clustering(R))
+
+#clustering metrics for synonymy and paradimatic subgraphs
+s_graph = []
+i_graph = []
+c_graph = []
+for i in G:
+    if i in events['statives']:
+        s_graph.append(i)
+    elif i in events['inchoatives']:
+        i_graph.append(i)
+    elif i in events['causatives']:
+        c_graph.append(i)
+G_stative = G.subgraph(s_graph)
+print('Statives subgraph')
+print(clustering(G_stative))
+G_inchoative = G.subgraph(i_graph)
+print('Inchoatives subgraph')
+print(clustering(G_inchoative))
+G_causative = G.subgraph(c_graph)
+print('Causatives subgraph')
+print(clustering(G_causative))
+print('Paradigmatic constrast subgraph')
+print(clustering(H))
+
+
 print(clique(R))
 print(critical_points(R))
 centrality(R)
 diversity(R,events)
 
-plot(R, False, nodi, sizes, shape_cxn, colori)
+plot(R, nodi, sizes, shape_cxn, colori)
 
