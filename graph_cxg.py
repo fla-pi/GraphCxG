@@ -346,12 +346,19 @@ def diversity(graph, classification):
 
 
 def clustering(graph):
+    avg_degree = sum(dict(R.degree()).values()) / R.number_of_nodes()
+    strengths = dict(G.degree(weight='weight'))
+    avg_strength = sum(strengths.values()) / len(strengths)
+
     print('Properties of the Graph')
     print('--------------------------')
     print('number of nodes:', str(graph.number_of_nodes()))
     print('number of edges:', str(graph.number_of_edges()))
+    print('average_degree_unweighted', str(avg_degree))
+    print('average_degree_weighted', str(avg_strength))
     print('density:', str(nx.density(graph)))
-    print('average clustering:', str(nx.average_clustering(graph, weight = 'weight')))
+    print('average clustering_unweighted:', str(nx.average_clustering(graph)))
+    print('average clustering_weighted:', str(nx.average_clustering(graph, weight = 'weight')))
     print('assortativity:', str(nx.degree_assortativity_coefficient(graph, weight = 'weight')))
     print('transitivity: ', str(nx.transitivity(graph)))
 
