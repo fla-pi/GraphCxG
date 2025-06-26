@@ -19,6 +19,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import pygraphviz
 import igraph as ig
 from operator import itemgetter
+from collections import defaultdict
 
 #list of cxns
 nodi = ['avere','provare','sentire','essere_in','conversion_stative','conversion+si_stative','parasynthesis+si_stative','suffixation_stative','andare_in','farsi','prendere','conversion+si_inchoative','parasynthesis+si_inchoative','dare','fare','mettere','conversion_causative','parasynthesis','suffixation_causative']
@@ -159,6 +160,16 @@ cxn_lab = dict()
 for i in range(len(nodi)):
     cxn_lab[nodi[i]] = nodi_lab[i]
 
+# add attributes
+for event_label, node_list in events.items():
+    for node in node_list:
+        if R.has_node(node):
+            R.nodes[node]['event_type'] = event_label
+for cxn_label, node_list in cxn_type.items():
+    for node in node_list:
+        if R.has_node(node):
+            R.nodes[node]['cxn_type'] = cxn_label
+
 
 #function for plotting the graphs
 def plot(graph, nodi, sizes, shape_cxn, colori):
@@ -259,6 +270,41 @@ def centrality(graph):
     df2 = pd.DataFrame.from_dict(clos, orient = 'index', columns = ['closeness'])
     df2.to_csv('closeness_centrality.csv',encoding='utf-8')
     
+# attribute assortativity (weighted) calculated according to assortnet R function
+def attribute_weighted_assortativity(graph, attr):
+    mixing = defaultdict(float)
+    total_weight = 0.0
+
+    for u, v, data in graph.edges(data=True):
+        if attr in graph.nodes[u] and attr in graph.nodes[v]:
+            attr_u = graph.nodes[u][attr]
+            attr_v = graph.nodes[v][attr]
+            weight = data.get("weight", 1.0)
+            total_weight += weight
+            mixing[(attr_u, attr_v)] += weight
+            if attr_u != attr_v:
+                mixing[(attr_v, attr_u)] += weight 
+
+
+    labels = sorted(set(k for pair in mixing for k in pair))
+    index = {label: i for i, label in enumerate(labels)}
+    n = len(labels)
+    E = np.zeros((n, n))
+
+    for (i_lab, j_lab), weight in mixing.items():
+        i, j = index[i_lab], index[j_lab]
+        E[i, j] += weight
+
+    E /= E.sum()
+
+    a = E.sum(axis=1)
+    b = E.sum(axis=0)
+
+    trace = np.trace(E)
+    product = np.dot(a, b)
+    r = (trace - product) / (1 - product) if (1 - product) != 0 else np.nan
+
+    return r
 
 
 #find maximal cliques
@@ -350,6 +396,14 @@ def clustering(graph):
     strengths = dict(G.degree(weight='weight'))
     avg_strength = sum(strengths.values()) / len(strengths)
 
+    stat_nodes = [n for n, d in graph.nodes(data=True) if d.get('event_type') == 'statives']
+    inch_nodes = [n for n, d in graph.nodes(data=True) if d.get('event_type') == 'inchoatives']
+    caus_nodes = [n for n, d in graph.nodes(data=True) if d.get('event_type') == 'causatives']
+
+    gr_st = graph.subgraph(stat_nodes).copy()
+    gr_inch = graph.subgraph(inch_nodes).copy()
+    gr_caus = graph.subgraph(caus_nodes).copy()
+
     print('Properties of the Graph')
     print('--------------------------')
     print('number of nodes:', str(graph.number_of_nodes()))
@@ -357,11 +411,17 @@ def clustering(graph):
     print('average_degree_unweighted', str(avg_degree))
     print('average_degree_weighted', str(avg_strength))
     print('density:', str(nx.density(graph)))
+    print('transitivity: ', str(nx.transitivity(graph)))
     print('average clustering_unweighted:', str(nx.average_clustering(graph)))
     print('average clustering_weighted:', str(nx.average_clustering(graph, weight = 'weight')))
-    print('assortativity:', str(nx.degree_assortativity_coefficient(graph, weight = 'weight')))
-    print('transitivity: ', str(nx.transitivity(graph)))
-
+    print('degree_assortativity:', str(nx.degree_assortativity_coefficient(graph, weight = 'weight')))
+    print('attribute_assortativity (cxn_type):', str(nx.attribute_assortativity_coefficient(graph, 'cxn_type')))
+    print('attribute_assortativity (event_type):', str(nx.attribute_assortativity_coefficient(graph, 'event_type')))
+    print('attribute_assortativity_weighted (cxn_type):', str(attribute_weighted_assortativity(graph, 'cxn_type')))
+    print('attribute_assortativity_weighted (event_type):', str(attribute_weighted_assortativity(graph, 'event_type')))
+    print('attribute_assortativity - cxn_type for statives:', str(nx.attribute_assortativity_coefficient(gr_st, 'cxn_type')), ', inchoatives: ', str(nx.attribute_assortativity_coefficient(gr_inch, 'cxn_type')), ', and causatives:', str(nx.attribute_assortativity_coefficient(gr_caus, 'cxn_type')))
+    print('attribute_assortativity_weighted - cxn_type for statives:', str(attribute_weighted_assortativity(gr_st, 'cxn_type')), ', inchoatives: ', str(attribute_weighted_assortativity(gr_inch, 'cxn_type')), ', and causatives:', str(attribute_weighted_assortativity(gr_caus, 'cxn_type')))
+    
 
 print(clustering(R))
 
